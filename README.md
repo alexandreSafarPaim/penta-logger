@@ -5,82 +5,84 @@
 [![License](https://img.shields.io/packagist/l/alexandresafarpaim/penta-logger.svg?style=flat-square)](https://packagist.org/packages/alexandresafarpaim/penta-logger)
 [![PHP Version](https://img.shields.io/packagist/php-v/alexandresafarpaim/penta-logger.svg?style=flat-square)](https://packagist.org/packages/alexandresafarpaim/penta-logger)
 
-Real-time log streaming dashboard for Laravel applications. Monitor requests, errors, external APIs, queued jobs, and scheduled tasks - all in one place with zero configuration.
+> **[Read in English](intl/README_EN.md)**
 
-## Features
+Dashboard de streaming de logs em tempo real para aplicações Laravel. Monitore requisições, erros, APIs externas, jobs e tarefas agendadas - tudo em um só lugar, sem configuração.
 
-- **Request Logs**: HTTP method, endpoint, headers, request/response body, status code, duration
-- **Error Logs**: Exception details with optimized stack trace (only your application code)
-- **External API Logs**: Track all HTTP client calls with full request/response data
-- **Job Logs**: Monitor queued jobs - status, duration, attempts, payload, and exceptions
-- **Schedule Logs**: Track scheduled tasks - command, cron expression, duration, output
-- **Real-time Dashboard**: Server-Sent Events (SSE) for instant updates
-- **Advanced Filters**: Filter by method, status, endpoint, IP, and date range
-- **Zero Config**: Works out of the box, no database or setup needed
-- **Secure**: Disabled in production by default, automatic sensitive data masking
+## Funcionalidades
 
-## Requirements
+- **Logs de Requisições**: Método HTTP, endpoint, headers, corpo da requisição/resposta, status, duração
+- **Logs de Erros**: Detalhes de exceções com stack trace otimizado (apenas seu código)
+- **Logs de APIs Externas**: Rastreie todas as chamadas HTTP client com dados completos
+- **Logs de Jobs**: Monitore jobs da fila - status, duração, tentativas, payload e exceções
+- **Logs de Schedules**: Acompanhe tarefas agendadas - comando, expressão cron, duração, output
+- **Dashboard em Tempo Real**: Server-Sent Events (SSE) para atualizações instantâneas
+- **Filtros Avançados**: Filtre por método, status, endpoint, IP e intervalo de datas
+- **Zero Configuração**: Funciona imediatamente, sem banco de dados ou setup
+- **Seguro**: Desabilitado em produção por padrão, mascaramento automático de dados sensíveis
+
+## Requisitos
 
 - PHP 8.1+
-- Laravel 10, 11, or 12
+- Laravel 10, 11 ou 12
 
-## Installation
+## Instalação
 
 ```bash
 composer require alexandresafarpaim/penta-logger --dev
 ```
 
-That's it! Visit `http://your-app.test/_penta-logger` to see the dashboard.
+Pronto! Acesse `http://sua-app.test/_penta-logger` para ver o dashboard.
 
-## What Gets Logged
+## O Que é Registrado
 
-### Requests
-All HTTP requests to your application with:
-- IP address, HTTP method, URL, and path
-- Request headers and body
-- Response headers and body
-- Status code and duration
+### Requisições
+Todas as requisições HTTP para sua aplicação com:
+- Endereço IP, método HTTP, URL e path
+- Headers e corpo da requisição
+- Headers e corpo da resposta
+- Código de status e duração
 
-### Errors
-All exceptions with:
-- Exception class and message
-- File and line number
-- Filtered stack trace (only your code, not vendor)
-- Request context
+### Erros
+Todas as exceções com:
+- Classe e mensagem da exceção
+- Arquivo e número da linha
+- Stack trace filtrado (apenas seu código, não vendor)
+- Contexto da requisição
 
-### External APIs
-All HTTP client calls (`Http::get()`, etc.) with:
-- URL and method
-- Request headers and body
-- Response status, headers, and body
-- Duration
+### APIs Externas
+Todas as chamadas HTTP client (`Http::get()`, etc.) com:
+- URL e método
+- Headers e corpo da requisição
+- Status, headers e corpo da resposta
+- Duração
 
 ### Jobs
-All queued jobs with:
-- Job class name and ID
-- Queue name and connection
-- Attempt number and max tries
-- Job payload/data
-- Duration and status (completed/failed)
-- Exception details if failed
+Todos os jobs da fila com:
+- Nome da classe e ID do job
+- Nome da fila e conexão
+- Número da tentativa e máximo de tentativas
+- Payload/dados do job
+- Duração e status (completed/failed)
+- Detalhes da exceção se falhou
 
-### Scheduled Tasks
-All scheduled commands with:
-- Command or closure
-- Cron expression
-- Duration and status
-- Output (if available)
-- Exception details if failed
+### Tarefas Agendadas
+Todos os comandos agendados com:
+- Comando ou closure
+- Expressão cron
+- Duração e status
+- Output (se disponível)
+- Detalhes da exceção se falhou
 
-## Configuration (Optional)
+## Configuração (Opcional)
 
-Publish the config file to customize:
+Publique o arquivo de configuração para personalizar:
 
 ```bash
 php artisan vendor:publish --tag=penta-logger-config
 ```
 
-### Environment Variables
+### Variáveis de Ambiente
 
 ```env
 PENTA_LOGGER_ENABLED=true
@@ -91,48 +93,48 @@ PENTA_LOGGER_MAX_LOGS=500
 PENTA_LOGGER_ALLOW_PRODUCTION=false
 ```
 
-### Config Options
+### Opções de Configuração
 
 ```php
 // config/penta-logger.php
 
 return [
-    // Enable/disable the package
+    // Habilitar/desabilitar o pacote
     'enabled' => env('PENTA_LOGGER_ENABLED', true),
 
-    // Dashboard authentication
+    // Autenticação do dashboard
     'auth' => [
         'user' => env('PENTA_LOGGER_USER'),
         'password' => env('PENTA_LOGGER_PASSWORD'),
     ],
 
-    // Dashboard URL prefix
+    // Prefixo da URL do dashboard
     'route_prefix' => '_penta-logger',
 
-    // Route middleware
+    // Middleware das rotas
     'middleware' => ['web'],
 
-    // Max logs to keep in storage
+    // Máximo de logs a manter
     'max_logs' => 500,
 
-    // Enable in production (requires auth)
+    // Habilitar em produção (requer autenticação)
     'allow_production' => false,
 
-    // Paths to ignore (supports wildcards)
+    // Paths a ignorar (suporta wildcards)
     'ignore_paths' => [
         '_penta-logger/*',
         'telescope/*',
         'horizon/*',
     ],
 
-    // Headers to mask
+    // Headers a mascarar
     'mask_headers' => [
         'Authorization',
         'Cookie',
         'X-API-Key',
     ],
 
-    // Fields to mask (partial match)
+    // Campos a mascarar (correspondência parcial)
     'mask_fields' => [
         'password',
         'credit_card',
@@ -143,57 +145,57 @@ return [
 ];
 ```
 
-## Production Usage
+## Uso em Produção
 
-By default, Penta Logger is **disabled in production**. To enable it safely:
+Por padrão, o Penta Logger está **desabilitado em produção**. Para habilitá-lo com segurança:
 
-1. Set authentication credentials:
+1. Configure as credenciais de autenticação:
 
 ```env
 PENTA_LOGGER_USER=admin
-PENTA_LOGGER_PASSWORD=your-secure-password
+PENTA_LOGGER_PASSWORD=sua-senha-segura
 ```
 
-2. Enable production mode:
+2. Habilite o modo de produção:
 
 ```env
 PENTA_LOGGER_ALLOW_PRODUCTION=true
 ```
 
-## Security
+## Segurança
 
-- Disabled in production by default
-- Optional basic authentication for dashboard
-- Sensitive headers (Authorization, Cookie, etc.) are masked
-- Sensitive fields (password, credit_card, token, etc.) are masked
-- Stack traces only show your application files (not vendor)
-- Large response bodies are truncated
+- Desabilitado em produção por padrão
+- Autenticação básica opcional para o dashboard
+- Headers sensíveis (Authorization, Cookie, etc.) são mascarados
+- Campos sensíveis (password, credit_card, token, etc.) são mascarados
+- Stack traces mostram apenas arquivos da sua aplicação (não vendor)
+- Corpos de resposta grandes são truncados
 
-## Architecture
+## Arquitetura
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                      Your Laravel App                        │
+│                    Sua Aplicação Laravel                     │
 ├─────────────────────────────────────────────────────────────┤
 │  Middleware          │  Exception Handler  │  Event Listeners│
-│  (Requests)          │  (Errors)           │  (APIs/Jobs)    │
+│  (Requisições)       │  (Erros)            │  (APIs/Jobs)    │
 └──────────┬───────────┴─────────┬───────────┴────────┬────────┘
            │                     │                    │
            └─────────────────────┼────────────────────┘
                                  ▼
                     ┌────────────────────────┐
                     │     LogCollector       │
-                    │   (JSON Lines File)    │
+                    │   (Arquivo JSON Lines) │
                     └───────────┬────────────┘
                                 │
                     ┌───────────┴────────────┐
                     │                        │
               ┌─────▼─────┐          ┌───────▼───────┐
               │ Dashboard │◄────SSE──│ StreamController│
-              │  (HTML)   │          │   (Real-time)  │
+              │  (HTML)   │          │  (Tempo Real)  │
               └───────────┘          └────────────────┘
 ```
 
-## License
+## Licença
 
 MIT
