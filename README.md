@@ -1,5 +1,10 @@
 # Penta Logger
 
+[![Latest Version on Packagist](https://img.shields.io/packagist/v/alexandresafarpaim/penta-logger.svg?style=flat-square)](https://packagist.org/packages/alexandresafarpaim/penta-logger)
+[![Total Downloads](https://img.shields.io/packagist/dt/alexandresafarpaim/penta-logger.svg?style=flat-square)](https://packagist.org/packages/alexandresafarpaim/penta-logger)
+[![License](https://img.shields.io/packagist/l/alexandresafarpaim/penta-logger.svg?style=flat-square)](https://packagist.org/packages/alexandresafarpaim/penta-logger)
+[![PHP Version](https://img.shields.io/packagist/php-v/alexandresafarpaim/penta-logger.svg?style=flat-square)](https://packagist.org/packages/alexandresafarpaim/penta-logger)
+
 Real-time log streaming dashboard for Laravel applications. Monitor requests, errors, external APIs, queued jobs, and scheduled tasks - all in one place with zero configuration.
 
 ## Features
