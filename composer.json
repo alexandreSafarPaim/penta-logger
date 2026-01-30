@@ -1,12 +1,14 @@
 {
-    "name": "your-vendor/penta-logger",
-    "description": "Real-time log streaming dashboard for Laravel applications",
+    "name": "alexandresafarpaim/penta-logger",
+    "description": "Real-time log streaming dashboard for Laravel. Monitor requests, errors, external APIs, jobs, and scheduled tasks with zero configuration.",
+    "keywords": ["laravel", "logging", "debugging", "developer-tools", "real-time", "dashboard", "jobs", "queue", "scheduler"],
     "type": "library",
     "license": "MIT",
+    "homepage": "https://github.com/alexandreSafarPaim/penta-logger",
     "authors": [
         {
-            "name": "Your Name",
-            "email": "your@email.com"
+            "name": "Alexandre Safari Paim",
+            "homepage": "https://github.com/alexandreSafarPaim"
         }
     ],
     "require": {

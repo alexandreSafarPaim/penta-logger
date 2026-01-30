@@ -22,7 +22,7 @@ Real-time log streaming dashboard for Laravel applications. Monitor requests, er
 ## Installation
 
 ```bash
-composer require your-vendor/penta-logger --dev
+composer require alexandresafarpaim/penta-logger --dev
 ```
 
 That's it! Visit `http://your-app.test/_penta-logger` to see the dashboard.
