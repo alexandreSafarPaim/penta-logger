@@ -1,0 +1,24 @@
+/vendor/
+/node_modules/
+.phpunit.result.cache
+.php-cs-fixer.cache
+phpunit.xml
+
+# IDE and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+*.sublime-project
+*.sublime-workspace
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Local development
+.env
+*.log
+/projeto_teste/
+CLAUDE.md
+PLANNING.md
