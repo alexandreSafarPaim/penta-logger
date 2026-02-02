@@ -28,7 +28,7 @@ class CaptureRequestLog
         $requestId = Str::uuid()->toString();
         $collector->setCurrentRequestId($requestId);
 
-        // Capture request
+        // Capture request headers
         $headers = [];
         foreach ($request->headers->all() as $key => $values) {
             $headers[$key] = is_array($values) ? implode(', ', $values) : $values;
@@ -46,13 +46,13 @@ class CaptureRequestLog
         try {
             $response = $next($request);
         } catch (Throwable $e) {
-            $this->logRequestData($collector, $requestId, $request, null, $requestData, $startTime);
+            $this->logRequest($collector, $requestId, $request, null, $requestData, $startTime);
             $collector->clearCurrentRequestId();
             throw $e;
         }
 
         try {
-            $this->logRequestData($collector, $requestId, $request, $response, $requestData, $startTime);
+            $this->logRequest($collector, $requestId, $request, $response, $requestData, $startTime);
         } catch (Throwable $e) {
             // Ignore logging errors
         }
@@ -88,7 +88,7 @@ class CaptureRequestLog
         }
     }
 
-    protected function logRequestData(
+    protected function logRequest(
         LogCollector $collector,
         string $requestId,
         Request $request,
@@ -97,6 +97,7 @@ class CaptureRequestLog
         float $startTime
     ): void {
         $responseData = null;
+
         if ($response) {
             // Check for StreamedResponse
             if ($response instanceof \Symfony\Component\HttpFoundation\StreamedResponse) {
@@ -106,9 +107,9 @@ class CaptureRequestLog
                     'size' => 0,
                 ];
             } else {
-                $headers = [];
+                $responseHeaders = [];
                 foreach ($response->headers->all() as $key => $values) {
-                    $headers[$key] = is_array($values) ? implode(', ', $values) : $values;
+                    $responseHeaders[$key] = is_array($values) ? implode(', ', $values) : $values;
                 }
 
                 $content = $response->getContent();
@@ -131,7 +132,7 @@ class CaptureRequestLog
                 }
 
                 $responseData = [
-                    'headers' => $collector->maskHeaders($headers),
+                    'headers' => $collector->maskHeaders($responseHeaders),
                     'body' => $body,
                     'size' => strlen($content),
                 ];
