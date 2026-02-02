@@ -53,9 +53,14 @@ class ExceptionHandlerDecorator implements ExceptionHandler
 
     protected function logException(Throwable $e): void
     {
-        $trace = TraceFilter::filter($e->getTrace());
-
         $request = request();
+
+        // Check if this path should be ignored
+        if ($request && $this->collector->shouldIgnorePath($request->path())) {
+            return;
+        }
+
+        $trace = TraceFilter::filter($e->getTrace());
         $requestContext = null;
 
         if ($request) {
