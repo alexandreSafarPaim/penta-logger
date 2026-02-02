@@ -1359,7 +1359,13 @@ class DashboardController extends Controller
                     <div class="log-details">
                         <div class="detail-section">
                             <div class="detail-title">Exception</div>
-                            <pre>${escapeHtmlText(d.exception)}</pre>
+                            <pre class="error-text">${escapeHtmlText(d.exception)}: ${escapeHtmlText(d.message)}
+at ${escapeHtmlText(d.file)}:${d.line}</pre>
+                            ${d.previous ? `
+                            <div class="detail-title" style="margin-top: 10px;">Caused by</div>
+                            <pre class="error-text">${escapeHtmlText(d.previous.exception)}: ${escapeHtmlText(d.previous.message)}
+at ${escapeHtmlText(d.previous.file)}:${d.previous.line}</pre>
+                            ` : ''}
                         </div>
                         ${d.request ? `
                         <div class="detail-section">
@@ -1669,16 +1675,16 @@ at ${escapeHtmlText(d.exception.previous.file)}:${d.exception.previous.line}</pr
             modalBody.innerHTML = `
                 <div class="error-detail">
                     <div class="error-detail-label">Exception</div>
-                    <div class="error-detail-value exception">${escapeHtmlText(d.exception)}</div>
+                    <pre class="error-text" style="margin: 0; padding: 10px; background: rgba(218, 54, 51, 0.1); border-radius: 4px;">${escapeHtmlText(d.exception)}: ${escapeHtmlText(d.message)}
+at ${escapeHtmlText(d.file)}:${d.line}</pre>
                 </div>
+                ${d.previous ? `
                 <div class="error-detail">
-                    <div class="error-detail-label">Message</div>
-                    <div class="error-detail-value message">${escapeHtmlText(d.message)}</div>
+                    <div class="error-detail-label">Caused by</div>
+                    <pre class="error-text" style="margin: 0; padding: 10px; background: rgba(218, 54, 51, 0.1); border-radius: 4px;">${escapeHtmlText(d.previous.exception)}: ${escapeHtmlText(d.previous.message)}
+at ${escapeHtmlText(d.previous.file)}:${d.previous.line}</pre>
                 </div>
-                <div class="error-detail">
-                    <div class="error-detail-label">File</div>
-                    <div class="error-detail-value">${escapeHtmlText(d.file)}:${d.line}</div>
-                </div>
+                ` : ''}
                 <div class="error-detail">
                     <div class="error-detail-label">Time</div>
                     <div class="error-detail-value">${time}</div>

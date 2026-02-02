@@ -27,12 +27,21 @@ class ScheduleListener
 
     public function handleScheduledTaskFinished(ScheduledTaskFinished $event): void
     {
-        $this->logSchedule($event->task, 'completed', null, $event->runtime ?? null);
+        // Check exit code to determine if the task actually failed
+        // In Laravel 8, ScheduledTaskFailed event is not always fired for subprocess failures
+        $exitCode = $event->task->exitCode;
+
+        // exitCode of 0 means success, any other value is treated as failure
+        // null means the exit code wasn't captured (treat as completed for backward compatibility)
+        $status = ($exitCode === 0 || $exitCode === null) ? 'completed' : 'failed';
+
+        $this->logSchedule($event->task, $status, null, $event->runtime ?? null, $exitCode);
     }
 
     public function handleScheduledTaskFailed(ScheduledTaskFailed $event): void
     {
-        $this->logSchedule($event->task, 'failed', $event->exception);
+        $exitCode = $event->task->exitCode ?? 1;
+        $this->logSchedule($event->task, 'failed', $event->exception, null, $exitCode);
     }
 
     public function handleScheduledTaskSkipped(ScheduledTaskSkipped $event): void
@@ -40,7 +49,7 @@ class ScheduleListener
         $this->logSchedule($event->task, 'skipped');
     }
 
-    protected function logSchedule(ScheduledEvent $task, string $status, ?\Throwable $exception = null, ?float $runtime = null): void
+    protected function logSchedule(ScheduledEvent $task, string $status, ?\Throwable $exception = null, ?float $runtime = null, ?int $exitCode = null): void
     {
         $taskId = $this->getTaskId($task);
 
@@ -67,6 +76,11 @@ class ScheduleListener
             'even_in_maintenance_mode' => $task->evenInMaintenanceMode ?? false,
         ];
 
+        // Include exit code if available
+        if ($exitCode !== null) {
+            $data['exit_code'] = $exitCode;
+        }
+
         // Try to get output if available
         if (property_exists($task, 'output') && $task->output && file_exists($task->output)) {
             $output = @file_get_contents($task->output);
@@ -87,6 +101,28 @@ class ScheduleListener
             }
 
             $data['exception'] = $exceptionData;
+        } elseif ($status === 'failed' && isset($data['output']) && !empty($data['output'])) {
+            // For subprocess failures without exception object, try to parse from output
+            $parsedException = $this->parseExceptionFromOutput($data['output']);
+            if ($parsedException) {
+                $data['exception'] = $parsedException;
+            } else {
+                // Provide a generic exception info based on exit code
+                $data['exception'] = [
+                    'class' => 'ProcessFailedException',
+                    'message' => "Command exited with code {$exitCode}",
+                    'file' => null,
+                    'line' => null,
+                ];
+            }
+        } elseif ($status === 'failed') {
+            // No output available but task failed
+            $data['exception'] = [
+                'class' => 'ProcessFailedException',
+                'message' => "Command exited with code " . ($exitCode ?? 'unknown'),
+                'file' => null,
+                'line' => null,
+            ];
         }
 
         $this->collector->logSchedule($data);
