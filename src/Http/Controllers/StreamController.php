@@ -78,7 +78,8 @@ class StreamController extends Controller
     public function logs(Request $request): JsonResponse
     {
         $type = $request->query('type');
-        $logs = $this->collector->getLogs($type);
+        $since = $request->query('since');
+        $logs = $this->collector->getLogs($type, $since);
 
         return response()->json($logs);
     }

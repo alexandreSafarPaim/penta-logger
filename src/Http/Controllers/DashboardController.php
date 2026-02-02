@@ -1022,39 +1022,37 @@ class DashboardController extends Controller
         const logs = { request: [], error: [], external_api: [], job: [], schedule: [] };
         let currentTab = 'request';
         let isPaused = false;
-        let eventSource = null;
+        let pollInterval = null;
         let lastTimestamp = null;
 
-        function connect() {
-            if (eventSource) {
-                eventSource.close();
+        function startPolling() {
+            if (pollInterval) {
+                clearInterval(pollInterval);
             }
 
-            const url = new URL('./_penta-logger/stream', window.location.origin);
-            if (lastTimestamp) {
-                url.searchParams.set('since', lastTimestamp);
-            }
+            document.getElementById('statusDot').classList.add('connected');
+            document.getElementById('statusText').textContent = 'Polling';
 
-            eventSource = new EventSource(url);
-
-            eventSource.onopen = () => {
-                document.getElementById('statusDot').classList.add('connected');
-                document.getElementById('statusText').textContent = 'Connected';
-            };
-
-            eventSource.onerror = () => {
-                document.getElementById('statusDot').classList.remove('connected');
-                document.getElementById('statusText').textContent = 'Reconnecting...';
-                setTimeout(connect, 3000);
-            };
-
-            eventSource.addEventListener('log', (e) => {
+            pollInterval = setInterval(() => {
                 if (isPaused) return;
-                const data = JSON.parse(e.data);
-                addLog(data);
-            });
 
-            eventSource.addEventListener('ping', () => {});
+                const url = new URL('./_penta-logger/logs', window.location.origin);
+                if (lastTimestamp) {
+                    url.searchParams.set('since', lastTimestamp);
+                }
+
+                fetch(url)
+                    .then(r => r.json())
+                    .then(data => {
+                        document.getElementById('statusDot').classList.add('connected');
+                        document.getElementById('statusText').textContent = 'Polling';
+                        data.forEach(log => addLog(log));
+                    })
+                    .catch(() => {
+                        document.getElementById('statusDot').classList.remove('connected');
+                        document.getElementById('statusText').textContent = 'Error';
+                    });
+            }, 1000);  // Poll every second
         }
 
         function addLog(log) {
@@ -1696,9 +1694,9 @@ at ${escapeHtmlText(d.exception.previous.file)}:${d.exception.previous.line}</pr
                     });
                     updateCounts();
                     renderLogs();
-                    connect();
+                    startPolling();
                 })
-                .catch(() => connect());
+                .catch(() => startPolling());
         }
 
         // Setup logout form
