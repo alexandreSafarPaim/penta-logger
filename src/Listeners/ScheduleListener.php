@@ -25,9 +25,16 @@ class ScheduleListener
         $taskId = $this->getTaskId($event->task);
         $this->taskStartTimes[$taskId] = microtime(true);
 
-        // Automatically configure output capture if not already set
+        // Automatically configure output capture if not already set by user
         // This allows Penta Logger to capture exception details transparently
-        if (!$event->task->output) {
+        // Default output is '/dev/null' or 'NUL' on Windows
+        $defaultOutput = $event->task->output;
+        $isDefaultOutput = !$defaultOutput
+            || $defaultOutput === '/dev/null'
+            || $defaultOutput === 'NUL'
+            || str_ends_with($defaultOutput, DIRECTORY_SEPARATOR . 'NUL');
+
+        if ($isDefaultOutput) {
             $tempFile = sys_get_temp_dir() . '/penta-logger-schedule-' . $taskId . '-' . time() . '.log';
             $event->task->sendOutputTo($tempFile);
             $this->tempOutputFiles[$taskId] = $tempFile;
