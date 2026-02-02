@@ -1127,85 +1127,92 @@ class DashboardController extends Controller
         function renderLogs() {
             const list = document.getElementById('logList');
 
-            // Get filter values
-            const filterMethod = document.getElementById('filterMethod')?.value || '';
-            const filterStatus = document.getElementById('filterStatus')?.value || '';
-            const filterEndpoint = (document.getElementById('filterEndpoint')?.value || '').toLowerCase();
-            const filterIp = (document.getElementById('filterIp')?.value || '').toLowerCase();
-            const filterBody = (document.getElementById('filterBody')?.value || '').toLowerCase();
-            const filterJobName = (document.getElementById('filterJobName')?.value || '').toLowerCase();
-            const filterScheduleCommand = (document.getElementById('filterScheduleCommand')?.value || '').toLowerCase();
-            const dateFrom = document.getElementById('dateFrom')?.value || '';
-            const dateTo = document.getElementById('dateTo')?.value || '';
+            try {
+                // Get filter values
+                const filterMethod = document.getElementById('filterMethod')?.value || '';
+                const filterStatus = document.getElementById('filterStatus')?.value || '';
+                const filterEndpoint = (document.getElementById('filterEndpoint')?.value || '').toLowerCase();
+                const filterIp = (document.getElementById('filterIp')?.value || '').toLowerCase();
+                const filterBody = (document.getElementById('filterBody')?.value || '').toLowerCase();
+                const filterJobName = (document.getElementById('filterJobName')?.value || '').toLowerCase();
+                const filterScheduleCommand = (document.getElementById('filterScheduleCommand')?.value || '').toLowerCase();
+                const dateFrom = document.getElementById('dateFrom')?.value || '';
+                const dateTo = document.getElementById('dateTo')?.value || '';
 
-            const filtered = logs[currentTab].filter(log => {
-                const data = log.data;
+                // Make sure we have a valid logs array for the current tab
+                const currentLogs = logs[currentTab] || [];
 
-                // Method filter
-                if (filterMethod) {
-                    const method = (data.method || '').toUpperCase();
-                    if (method !== filterMethod) return false;
-                }
+                const filtered = currentLogs.filter(log => {
+                    // Skip invalid logs
+                    if (!log || !log.data) return false;
 
-                // Status filter
-                if (filterStatus) {
-                    const status = data.status || 0;
-                    if (filterStatus === '2xx' && (status < 200 || status >= 300)) return false;
-                    if (filterStatus === '3xx' && (status < 300 || status >= 400)) return false;
-                    if (filterStatus === '4xx' && (status < 400 || status >= 500)) return false;
-                    if (filterStatus === '5xx' && (status < 500 || status >= 600)) return false;
-                }
+                    const data = log.data;
 
-                // Endpoint filter
-                if (filterEndpoint) {
-                    const path = (data.path || data.endpoint || data.url || '').toLowerCase();
-                    if (!path.includes(filterEndpoint)) return false;
-                }
-
-                // IP filter
-                if (filterIp) {
-                    const ip = (data.ip || '').toLowerCase();
-                    if (!ip.includes(filterIp)) return false;
-                }
-
-                // Body filter (search in request and response body)
-                if (filterBody && (log.type === 'request' || log.type === 'external_api')) {
-                    const requestBody = JSON.stringify(data.request?.body || {}).toLowerCase();
-                    const responseBody = JSON.stringify(data.response?.body || '').toLowerCase();
-                    if (!requestBody.includes(filterBody) && !responseBody.includes(filterBody)) {
-                        return false;
-                    }
-                }
-
-                // Job name filter
-                if (filterJobName && log.type === 'job') {
-                    const jobName = (data.name || '').toLowerCase();
-                    if (!jobName.includes(filterJobName)) return false;
-                }
-
-                // Schedule command filter
-                if (filterScheduleCommand && log.type === 'schedule') {
-                    const command = (data.command || '').toLowerCase();
-                    if (!command.includes(filterScheduleCommand)) return false;
-                }
-
-                // Date/time filter
-                if (dateFrom || dateTo) {
-                    const logTime = new Date(log.timestamp).getTime();
-
-                    if (dateFrom) {
-                        const fromTime = new Date(dateFrom).getTime();
-                        if (logTime < fromTime) return false;
+                    // Method filter
+                    if (filterMethod) {
+                        const method = (data.method || '').toUpperCase();
+                        if (method !== filterMethod) return false;
                     }
 
-                    if (dateTo) {
-                        const toTime = new Date(dateTo).getTime() + (60 * 1000) - 1;
-                        if (logTime > toTime) return false;
+                    // Status filter
+                    if (filterStatus) {
+                        const status = data.status || 0;
+                        if (filterStatus === '2xx' && (status < 200 || status >= 300)) return false;
+                        if (filterStatus === '3xx' && (status < 300 || status >= 400)) return false;
+                        if (filterStatus === '4xx' && (status < 400 || status >= 500)) return false;
+                        if (filterStatus === '5xx' && (status < 500 || status >= 600)) return false;
                     }
-                }
 
-                return true;
-            });
+                    // Endpoint filter
+                    if (filterEndpoint) {
+                        const path = (data.path || data.endpoint || data.url || '').toLowerCase();
+                        if (!path.includes(filterEndpoint)) return false;
+                    }
+
+                    // IP filter
+                    if (filterIp) {
+                        const ip = (data.ip || '').toLowerCase();
+                        if (!ip.includes(filterIp)) return false;
+                    }
+
+                    // Body filter (search in request and response body)
+                    if (filterBody && (log.type === 'request' || log.type === 'external_api')) {
+                        const requestBody = JSON.stringify(data.request?.body || {}).toLowerCase();
+                        const responseBody = JSON.stringify(data.response?.body || '').toLowerCase();
+                        if (!requestBody.includes(filterBody) && !responseBody.includes(filterBody)) {
+                            return false;
+                        }
+                    }
+
+                    // Job name filter
+                    if (filterJobName && log.type === 'job') {
+                        const jobName = (data.name || '').toLowerCase();
+                        if (!jobName.includes(filterJobName)) return false;
+                    }
+
+                    // Schedule command filter
+                    if (filterScheduleCommand && log.type === 'schedule') {
+                        const command = (data.command || '').toLowerCase();
+                        if (!command.includes(filterScheduleCommand)) return false;
+                    }
+
+                    // Date/time filter
+                    if (dateFrom || dateTo) {
+                        const logTime = new Date(log.timestamp).getTime();
+
+                        if (dateFrom) {
+                            const fromTime = new Date(dateFrom).getTime();
+                            if (logTime < fromTime) return false;
+                        }
+
+                        if (dateTo) {
+                            const toTime = new Date(dateTo).getTime() + (60 * 1000) - 1;
+                            if (logTime > toTime) return false;
+                        }
+                    }
+
+                    return true;
+                });
 
             if (filtered.length === 0) {
                 list.innerHTML = `
@@ -1236,6 +1243,18 @@ class DashboardController extends Controller
             });
 
             list.innerHTML = html;
+            } catch (e) {
+                console.error('Error in renderLogs:', e);
+                list.innerHTML = `
+                    <div class="empty-state">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <path d="M8 12h8"/>
+                        </svg>
+                        <p>Error rendering logs. Check console.</p>
+                    </div>
+                `;
+            }
         }
 
         function getDateKey(timestamp) {
