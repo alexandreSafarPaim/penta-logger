@@ -130,9 +130,11 @@ class LogCollector
 
         $handle = fopen($logFile, 'a');
         if ($handle) {
-            flock($handle, LOCK_EX);
-            fwrite($handle, $line);
-            flock($handle, LOCK_UN);
+            // Use non-blocking lock - skip write if can't acquire lock immediately
+            if (flock($handle, LOCK_EX | LOCK_NB)) {
+                fwrite($handle, $line);
+                flock($handle, LOCK_UN);
+            }
             fclose($handle);
         }
 
@@ -164,13 +166,26 @@ class LogCollector
             return;
         }
 
+        // Use non-blocking approach for trim
+        $handle = fopen($logFile, 'r+');
+        if (!$handle || !flock($handle, LOCK_EX | LOCK_NB)) {
+            if ($handle) fclose($handle);
+            return; // Skip trim if can't acquire lock
+        }
+
         $maxLogs = $this->getMaxLogsForType($type);
-        $lines = file($logFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+        $content = stream_get_contents($handle);
+        $lines = array_filter(explode("\n", $content), fn($line) => $line !== '');
 
         if (count($lines) > $maxLogs) {
             $lines = array_slice($lines, -$maxLogs);
-            file_put_contents($logFile, implode("\n", $lines) . "\n", LOCK_EX);
+            ftruncate($handle, 0);
+            rewind($handle);
+            fwrite($handle, implode("\n", $lines) . "\n");
         }
+
+        flock($handle, LOCK_UN);
+        fclose($handle);
     }
 
     public function getLogs(?string $type = null, ?string $since = null): array
