@@ -136,7 +136,10 @@ class LogCollector
             fclose($handle);
         }
 
-        $this->trimLogsForType($type);
+        // Only trim occasionally (1% chance) to avoid performance issues
+        if (random_int(1, 100) === 1) {
+            $this->trimLogsForType($type);
+        }
     }
 
     protected function trimLogsForType(string $type): void

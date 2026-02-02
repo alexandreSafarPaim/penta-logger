@@ -40,11 +40,19 @@ class CaptureRequestLog
             /** @var SymfonyResponse $response */
             $response = $next($request);
 
-            $this->logRequest($request, $response, $requestData);
+            try {
+                $this->logRequest($request, $response, $requestData);
+            } catch (Throwable $loggingException) {
+                // Silently ignore logging errors to prevent blocking requests
+            }
 
             return $response;
         } catch (Throwable $e) {
-            $this->logRequest($request, null, $requestData, $e);
+            try {
+                $this->logRequest($request, null, $requestData, $e);
+            } catch (Throwable $loggingException) {
+                // Silently ignore logging errors
+            }
             throw $e;
         }
     }
@@ -115,8 +123,21 @@ class CaptureRequestLog
 
     protected function captureResponse(SymfonyResponse $response): array
     {
-        $content = $response->getContent();
         $headers = $this->normalizeHeaders($response->headers->all());
+
+        // Skip body capture for streaming responses
+        if ($response instanceof \Symfony\Component\HttpFoundation\StreamedResponse) {
+            return [
+                'headers' => $this->collector->maskHeaders($headers),
+                'body' => '[Streamed Response]',
+                'size' => 0,
+            ];
+        }
+
+        $content = $response->getContent();
+        if ($content === false) {
+            $content = '';
+        }
 
         $body = $content;
         $contentType = $response->headers->get('Content-Type', '');
