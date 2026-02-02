@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Hash;
 
 class LoginController extends Controller
 {
-    public function showLoginForm(): Response
+    public function showLoginForm(): Response|RedirectResponse
     {
         if (!$this->isAuthEnabled()) {
             return redirect()->route('penta-logger.dashboard');
