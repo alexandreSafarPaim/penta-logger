@@ -13,6 +13,7 @@ class ScheduleListener
 {
     protected LogCollector $collector;
     protected array $taskStartTimes = [];
+    protected array $tempOutputFiles = [];
 
     public function __construct(LogCollector $collector)
     {
@@ -23,6 +24,14 @@ class ScheduleListener
     {
         $taskId = $this->getTaskId($event->task);
         $this->taskStartTimes[$taskId] = microtime(true);
+
+        // Automatically configure output capture if not already set
+        // This allows Penta Logger to capture exception details transparently
+        if (!$event->task->output) {
+            $tempFile = sys_get_temp_dir() . '/penta-logger-schedule-' . $taskId . '-' . time() . '.log';
+            $event->task->sendOutputTo($tempFile);
+            $this->tempOutputFiles[$taskId] = $tempFile;
+        }
     }
 
     public function handleScheduledTaskFinished(ScheduledTaskFinished $event): void
@@ -126,6 +135,12 @@ class ScheduleListener
         }
 
         $this->collector->logSchedule($data);
+
+        // Clean up temporary output file if we created one
+        if (isset($this->tempOutputFiles[$taskId])) {
+            @unlink($this->tempOutputFiles[$taskId]);
+            unset($this->tempOutputFiles[$taskId]);
+        }
     }
 
     protected function parseExceptionFromOutput(string $output): ?array
