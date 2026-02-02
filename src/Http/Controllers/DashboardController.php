@@ -1128,9 +1128,6 @@ class DashboardController extends Controller
             const list = document.getElementById('logList');
 
             try {
-                // Debug: log what we're trying to render
-                console.log('renderLogs called, currentTab:', currentTab, 'logs count:', logs[currentTab]?.length);
-
                 // Get filter values
                 const filterMethod = document.getElementById('filterMethod')?.value || '';
                 const filterStatus = document.getElementById('filterStatus')?.value || '';
@@ -1216,12 +1213,6 @@ class DashboardController extends Controller
 
                     return true;
                 });
-
-                // Debug: log filter results
-                console.log('filtered count:', filtered.length, 'from', currentLogs.length, 'logs');
-                if (filtered.length === 0 && currentLogs.length > 0) {
-                    console.log('First log sample:', JSON.stringify(currentLogs[0]).substring(0, 200));
-                }
 
             if (filtered.length === 0) {
                 list.innerHTML = `
@@ -1557,7 +1548,8 @@ at ${escapeHtmlText(d.exception.previous.file)}:${d.exception.previous.line}</pr
         }
 
         function escapeHtml(str) {
-            return str.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+            if (str === undefined || str === null) return '';
+            return String(str).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
         }
 
         function copyJson(event, json) {
