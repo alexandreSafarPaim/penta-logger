@@ -136,8 +136,22 @@ class LogCollector
             fclose($handle);
         }
 
-        // Only trim occasionally (1% chance) to avoid performance issues
-        if (random_int(1, 100) === 1) {
+        // Trim if file exceeds estimated size (avg 2KB per log entry)
+        $this->trimIfNeeded($type, $logFile);
+    }
+
+    protected function trimIfNeeded(string $type, string $logFile): void
+    {
+        if (!file_exists($logFile)) {
+            return;
+        }
+
+        $maxLogs = $this->getMaxLogsForType($type);
+        $estimatedMaxSize = $maxLogs * 2048; // ~2KB per entry estimate
+        $currentSize = filesize($logFile);
+
+        // Only trim when file is 20% over estimated max size
+        if ($currentSize > $estimatedMaxSize * 1.2) {
             $this->trimLogsForType($type);
         }
     }
