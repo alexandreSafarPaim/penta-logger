@@ -17,7 +17,7 @@ Dashboard de streaming de logs em tempo real para aplicações Laravel. Monitore
 - **Logs de Jobs**: Monitore jobs da fila - status, duração, tentativas, payload e exceções
 - **Logs de Schedules**: Acompanhe tarefas agendadas - comando, expressão cron, duração, output
 - **Dashboard em Tempo Real**: Server-Sent Events (SSE) para atualizações instantâneas
-- **Filtros Avançados**: Filtre por método, status, endpoint, IP e intervalo de datas
+- **Filtros Avançados**: Filtre por método, status, endpoint, IP, body, nome do job, comando do schedule e intervalo de datas
 - **Zero Configuração**: Funciona imediatamente, sem banco de dados ou setup
 - **Seguro**: Desabilitado em produção por padrão, mascaramento automático de dados sensíveis
 
@@ -87,12 +87,21 @@ php artisan vendor:publish --tag=penta-logger-config
 ### Variáveis de Ambiente
 
 ```env
+# Configurações gerais
 PENTA_LOGGER_ENABLED=true
+PENTA_LOGGER_ROUTE_PREFIX=_penta-logger
+PENTA_LOGGER_ALLOW_PRODUCTION=false
+
+# Autenticação (opcional)
 PENTA_LOGGER_USER=admin
 PENTA_LOGGER_PASSWORD=secret
-PENTA_LOGGER_ROUTE_PREFIX=_penta-logger
-PENTA_LOGGER_MAX_LOGS=500
-PENTA_LOGGER_ALLOW_PRODUCTION=false
+
+# Limite de logs por tipo (opcional, padrão: 500)
+PENTA_LOGGER_MAX_REQUESTS=500
+PENTA_LOGGER_MAX_ERRORS=500
+PENTA_LOGGER_MAX_EXTERNAL_API=500
+PENTA_LOGGER_MAX_JOBS=500
+PENTA_LOGGER_MAX_SCHEDULES=500
 ```
 
 ### Opções de Configuração
@@ -116,8 +125,14 @@ return [
     // Middleware das rotas
     'middleware' => ['web'],
 
-    // Máximo de logs a manter
-    'max_logs' => 500,
+    // Máximo de logs por tipo (use 0 para desabilitar um tipo)
+    'max_logs' => [
+        'request' => env('PENTA_LOGGER_MAX_REQUESTS', 500),
+        'error' => env('PENTA_LOGGER_MAX_ERRORS', 500),
+        'external_api' => env('PENTA_LOGGER_MAX_EXTERNAL_API', 500),
+        'job' => env('PENTA_LOGGER_MAX_JOBS', 500),
+        'schedule' => env('PENTA_LOGGER_MAX_SCHEDULES', 500),
+    ],
 
     // Habilitar em produção (requer autenticação)
     'allow_production' => false,

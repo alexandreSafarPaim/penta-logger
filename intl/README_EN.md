@@ -17,7 +17,7 @@ Real-time log streaming dashboard for Laravel applications. Monitor requests, er
 - **Job Logs**: Monitor queued jobs - status, duration, attempts, payload, and exceptions
 - **Schedule Logs**: Track scheduled tasks - command, cron expression, duration, output
 - **Real-time Dashboard**: Server-Sent Events (SSE) for instant updates
-- **Advanced Filters**: Filter by method, status, endpoint, IP, and date range
+- **Advanced Filters**: Filter by method, status, endpoint, IP, body content, job name, schedule command, and date range
 - **Zero Config**: Works out of the box, no database or setup needed
 - **Secure**: Disabled in production by default, automatic sensitive data masking
 
@@ -87,12 +87,21 @@ php artisan vendor:publish --tag=penta-logger-config
 ### Environment Variables
 
 ```env
+# General settings
 PENTA_LOGGER_ENABLED=true
+PENTA_LOGGER_ROUTE_PREFIX=_penta-logger
+PENTA_LOGGER_ALLOW_PRODUCTION=false
+
+# Authentication (optional)
 PENTA_LOGGER_USER=admin
 PENTA_LOGGER_PASSWORD=secret
-PENTA_LOGGER_ROUTE_PREFIX=_penta-logger
-PENTA_LOGGER_MAX_LOGS=500
-PENTA_LOGGER_ALLOW_PRODUCTION=false
+
+# Max logs per type (optional, default: 500)
+PENTA_LOGGER_MAX_REQUESTS=500
+PENTA_LOGGER_MAX_ERRORS=500
+PENTA_LOGGER_MAX_EXTERNAL_API=500
+PENTA_LOGGER_MAX_JOBS=500
+PENTA_LOGGER_MAX_SCHEDULES=500
 ```
 
 ### Config Options
@@ -116,8 +125,14 @@ return [
     // Route middleware
     'middleware' => ['web'],
 
-    // Max logs to keep in storage
-    'max_logs' => 500,
+    // Max logs per type (use 0 to disable a type)
+    'max_logs' => [
+        'request' => env('PENTA_LOGGER_MAX_REQUESTS', 500),
+        'error' => env('PENTA_LOGGER_MAX_ERRORS', 500),
+        'external_api' => env('PENTA_LOGGER_MAX_EXTERNAL_API', 500),
+        'job' => env('PENTA_LOGGER_MAX_JOBS', 500),
+        'schedule' => env('PENTA_LOGGER_MAX_SCHEDULES', 500),
+    ],
 
     // Enable in production (requires auth)
     'allow_production' => false,

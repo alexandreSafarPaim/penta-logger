@@ -173,7 +173,7 @@ class DashboardController extends Controller
             padding: 16px 20px;
             max-width: 1400px;
             margin: 0 auto;
-            height: calc(100vh - 140px);
+            height: calc(100vh - 120px);
             display: flex;
             flex-direction: column;
         }
@@ -617,13 +617,84 @@ class DashboardController extends Controller
             animation: fadeIn 0.3s ease-out;
         }
 
+        .filter-container {
+            position: relative;
+            flex-shrink: 0;
+            margin-bottom: 16px;
+        }
+
+        .filter-toggle {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.15s;
+        }
+
+        .filter-toggle:hover {
+            background: var(--bg-tertiary);
+        }
+
+        .filter-toggle.active {
+            background: var(--accent-blue);
+            border-color: var(--accent-blue);
+            color: white;
+        }
+
+        .filter-toggle .filter-badge {
+            background: var(--accent-blue);
+            color: white;
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-left: 4px;
+        }
+
+        .filter-toggle.active .filter-badge {
+            background: white;
+            color: var(--accent-blue);
+        }
+
+        .filter-toggle.has-filters {
+            border-color: var(--accent-blue);
+            color: var(--accent-blue);
+        }
+
+        .filter-panel {
+            position: absolute;
+            top: calc(100% + 8px);
+            left: 0;
+            right: 0;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 16px;
+            z-index: 50;
+            display: none;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .filter-panel.open {
+            display: block;
+        }
+
         .filter-bar {
             display: flex;
             gap: 12px;
-            padding-bottom: 16px;
             align-items: center;
             flex-wrap: wrap;
-            flex-shrink: 0;
+        }
+
+        .filter-group.hidden {
+            display: none;
         }
 
         .filter-group {
@@ -673,6 +744,18 @@ class DashboardController extends Controller
 
         #filterIp {
             min-width: 120px;
+        }
+
+        #filterBody {
+            min-width: 180px;
+        }
+
+        #filterJobName {
+            min-width: 160px;
+        }
+
+        #filterScheduleCommand {
+            min-width: 160px;
         }
 
         .btn-filter {
@@ -820,53 +903,80 @@ class DashboardController extends Controller
     </nav>
 
     <main class="content">
-        <div class="filter-bar">
-            <div class="filter-group">
-                <span class="filter-label">Method:</span>
-                <select class="filter-input" id="filterMethod" onchange="filterLogs()">
-                    <option value="">All</option>
-                    <option value="GET">GET</option>
-                    <option value="POST">POST</option>
-                    <option value="PUT">PUT</option>
-                    <option value="PATCH">PATCH</option>
-                    <option value="DELETE">DELETE</option>
-                    <option value="OPTIONS">OPTIONS</option>
-                    <option value="HEAD">HEAD</option>
-                </select>
-            </div>
+        <div class="filter-container">
+            <button class="filter-toggle" id="filterToggle" onclick="toggleFilters()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
+                </svg>
+                Filtros
+                <span class="filter-badge" id="filterBadge" style="display: none;">0</span>
+            </button>
 
-            <div class="filter-group">
-                <span class="filter-label">Status:</span>
-                <select class="filter-input" id="filterStatus" onchange="filterLogs()">
-                    <option value="">All</option>
-                    <option value="2xx">2xx Success</option>
-                    <option value="3xx">3xx Redirect</option>
-                    <option value="4xx">4xx Client Error</option>
-                    <option value="5xx">5xx Server Error</option>
-                </select>
-            </div>
+            <div class="filter-panel" id="filterPanel">
+                <div class="filter-bar">
+                    <div class="filter-group" data-tabs="request,external_api">
+                        <span class="filter-label">Method:</span>
+                        <select class="filter-input" id="filterMethod" onchange="filterLogs()">
+                            <option value="">All</option>
+                            <option value="GET">GET</option>
+                            <option value="POST">POST</option>
+                            <option value="PUT">PUT</option>
+                            <option value="PATCH">PATCH</option>
+                            <option value="DELETE">DELETE</option>
+                            <option value="OPTIONS">OPTIONS</option>
+                            <option value="HEAD">HEAD</option>
+                        </select>
+                    </div>
 
-            <div class="filter-group">
-                <span class="filter-label">Endpoint:</span>
-                <input type="text" class="filter-input" id="filterEndpoint" placeholder="/api/..." oninput="filterLogs()">
-            </div>
+                    <div class="filter-group" data-tabs="request,external_api">
+                        <span class="filter-label">Status:</span>
+                        <select class="filter-input" id="filterStatus" onchange="filterLogs()">
+                            <option value="">All</option>
+                            <option value="2xx">2xx Success</option>
+                            <option value="3xx">3xx Redirect</option>
+                            <option value="4xx">4xx Client Error</option>
+                            <option value="5xx">5xx Server Error</option>
+                        </select>
+                    </div>
 
-            <div class="filter-group">
-                <span class="filter-label">IP:</span>
-                <input type="text" class="filter-input" id="filterIp" placeholder="192.168..." oninput="filterLogs()">
-            </div>
+                    <div class="filter-group" data-tabs="request,external_api">
+                        <span class="filter-label">Endpoint:</span>
+                        <input type="text" class="filter-input" id="filterEndpoint" placeholder="/api/..." oninput="filterLogs()">
+                    </div>
 
-            <div class="filter-group">
-                <span class="filter-label">From:</span>
-                <input type="datetime-local" class="filter-input" id="dateFrom" onchange="filterLogs()">
-            </div>
+                    <div class="filter-group" data-tabs="request,external_api">
+                        <span class="filter-label">IP:</span>
+                        <input type="text" class="filter-input" id="filterIp" placeholder="192.168..." oninput="filterLogs()">
+                    </div>
 
-            <div class="filter-group">
-                <span class="filter-label">To:</span>
-                <input type="datetime-local" class="filter-input" id="dateTo" onchange="filterLogs()">
-            </div>
+                    <div class="filter-group" data-tabs="request,external_api">
+                        <span class="filter-label">Body:</span>
+                        <input type="text" class="filter-input" id="filterBody" placeholder="Search in body..." oninput="filterLogs()">
+                    </div>
 
-            <button class="btn-filter" onclick="clearFilters()">Clear</button>
+                    <div class="filter-group" data-tabs="job">
+                        <span class="filter-label">Job:</span>
+                        <input type="text" class="filter-input" id="filterJobName" placeholder="App\\Jobs\\..." oninput="filterLogs()">
+                    </div>
+
+                    <div class="filter-group" data-tabs="schedule">
+                        <span class="filter-label">Command:</span>
+                        <input type="text" class="filter-input" id="filterScheduleCommand" placeholder="artisan..." oninput="filterLogs()">
+                    </div>
+
+                    <div class="filter-group" data-tabs="request,external_api,error,job,schedule">
+                        <span class="filter-label">From:</span>
+                        <input type="datetime-local" class="filter-input" id="dateFrom" onchange="filterLogs()">
+                    </div>
+
+                    <div class="filter-group" data-tabs="request,external_api,error,job,schedule">
+                        <span class="filter-label">To:</span>
+                        <input type="datetime-local" class="filter-input" id="dateTo" onchange="filterLogs()">
+                    </div>
+
+                    <button class="btn-filter" onclick="clearFilters()">Clear</button>
+                </div>
+            </div>
         </div>
         <div class="log-list" id="logList">
             <div class="empty-state">
@@ -972,7 +1082,35 @@ class DashboardController extends Controller
             currentTab = tab;
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
             document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
+
+            // Clear filters and update visibility
+            clearFiltersValues();
+            updateFilterVisibility(tab);
+            updateFilterBadge();
             renderLogs();
+        }
+
+        function updateFilterVisibility(tab) {
+            document.querySelectorAll('.filter-group[data-tabs]').forEach(group => {
+                const tabs = group.dataset.tabs.split(',');
+                if (tabs.includes(tab)) {
+                    group.classList.remove('hidden');
+                } else {
+                    group.classList.add('hidden');
+                }
+            });
+        }
+
+        function clearFiltersValues() {
+            document.getElementById('filterMethod').value = '';
+            document.getElementById('filterStatus').value = '';
+            document.getElementById('filterEndpoint').value = '';
+            document.getElementById('filterIp').value = '';
+            document.getElementById('filterBody').value = '';
+            document.getElementById('filterJobName').value = '';
+            document.getElementById('filterScheduleCommand').value = '';
+            document.getElementById('dateFrom').value = '';
+            document.getElementById('dateTo').value = '';
         }
 
         function renderLogs() {
@@ -983,6 +1121,9 @@ class DashboardController extends Controller
             const filterStatus = document.getElementById('filterStatus')?.value || '';
             const filterEndpoint = document.getElementById('filterEndpoint')?.value.toLowerCase() || '';
             const filterIp = document.getElementById('filterIp')?.value.toLowerCase() || '';
+            const filterBody = document.getElementById('filterBody')?.value.toLowerCase() || '';
+            const filterJobName = document.getElementById('filterJobName')?.value.toLowerCase() || '';
+            const filterScheduleCommand = document.getElementById('filterScheduleCommand')?.value.toLowerCase() || '';
             const dateFrom = document.getElementById('dateFrom')?.value || '';
             const dateTo = document.getElementById('dateTo')?.value || '';
 
@@ -1014,6 +1155,27 @@ class DashboardController extends Controller
                 if (filterIp) {
                     const ip = (data.ip || '').toLowerCase();
                     if (!ip.includes(filterIp)) return false;
+                }
+
+                // Body filter (search in request and response body)
+                if (filterBody && (log.type === 'request' || log.type === 'external_api')) {
+                    const requestBody = JSON.stringify(data.request?.body || {}).toLowerCase();
+                    const responseBody = JSON.stringify(data.response?.body || '').toLowerCase();
+                    if (!requestBody.includes(filterBody) && !responseBody.includes(filterBody)) {
+                        return false;
+                    }
+                }
+
+                // Job name filter
+                if (filterJobName && log.type === 'job') {
+                    const jobName = (data.name || '').toLowerCase();
+                    if (!jobName.includes(filterJobName)) return false;
+                }
+
+                // Schedule command filter
+                if (filterScheduleCommand && log.type === 'schedule') {
+                    const command = (data.command || '').toLowerCase();
+                    if (!command.includes(filterScheduleCommand)) return false;
                 }
 
                 // Date/time filter
@@ -1387,18 +1549,57 @@ at ${escapeHtmlText(d.exception.file)}:${d.exception.line}</pre>
         }
 
         function filterLogs() {
+            updateFilterBadge();
             renderLogs();
         }
 
         function clearFilters() {
-            document.getElementById('filterMethod').value = '';
-            document.getElementById('filterStatus').value = '';
-            document.getElementById('filterEndpoint').value = '';
-            document.getElementById('filterIp').value = '';
-            document.getElementById('dateFrom').value = '';
-            document.getElementById('dateTo').value = '';
+            clearFiltersValues();
+            updateFilterBadge();
             renderLogs();
         }
+
+        function toggleFilters() {
+            const panel = document.getElementById('filterPanel');
+            const toggle = document.getElementById('filterToggle');
+            panel.classList.toggle('open');
+            toggle.classList.toggle('active');
+        }
+
+        function updateFilterBadge() {
+            // Only count visible filter groups
+            let activeCount = 0;
+            document.querySelectorAll('.filter-group[data-tabs]').forEach(group => {
+                if (!group.classList.contains('hidden')) {
+                    const input = group.querySelector('.filter-input');
+                    if (input && input.value && input.value.trim() !== '') {
+                        activeCount++;
+                    }
+                }
+            });
+
+            const badge = document.getElementById('filterBadge');
+            const toggle = document.getElementById('filterToggle');
+
+            if (activeCount > 0) {
+                badge.textContent = activeCount;
+                badge.style.display = 'inline';
+                toggle.classList.add('has-filters');
+            } else {
+                badge.style.display = 'none';
+                toggle.classList.remove('has-filters');
+            }
+        }
+
+        // Close filter panel when clicking outside
+        document.addEventListener('click', (e) => {
+            const container = document.querySelector('.filter-container');
+            const panel = document.getElementById('filterPanel');
+            if (container && !container.contains(e.target) && panel.classList.contains('open')) {
+                panel.classList.remove('open');
+                document.getElementById('filterToggle').classList.remove('active');
+            }
+        });
 
         function findLinkedError(requestId) {
             if (!requestId) return null;
@@ -1482,6 +1683,8 @@ at ${escapeHtmlText(d.exception.file)}:${d.exception.line}</pre>
         // Setup logout form
         document.getElementById('logoutForm').action = './_penta-logger/logout';
 
+        // Initialize filter visibility for the default tab
+        updateFilterVisibility(currentTab);
         loadInitialLogs();
     </script>
 </body>
