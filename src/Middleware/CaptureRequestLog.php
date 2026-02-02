@@ -4,8 +4,6 @@ namespace PentaLogger\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Str;
 use PentaLogger\LogCollector;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
@@ -13,26 +11,42 @@ use Throwable;
 
 class CaptureRequestLog
 {
-    protected LogCollector $collector;
+    protected ?LogCollector $collector = null;
     protected float $startTime;
     protected string $requestId;
 
-    public function __construct(LogCollector $collector)
+    // No constructor injection - lazy resolve to avoid boot timing issues in Laravel 8
+
+    protected function getCollector(): LogCollector
     {
-        $this->collector = $collector;
+        if ($this->collector === null) {
+            $this->collector = app(LogCollector::class);
+        }
+        return $this->collector;
     }
 
     public function handle(Request $request, Closure $next): SymfonyResponse
     {
         $this->startTime = microtime(true);
 
-        if ($this->collector->shouldIgnorePath($request->path())) {
+        // Early return for ignored paths
+        try {
+            if ($this->getCollector()->shouldIgnorePath($request->path())) {
+                return $next($request);
+            }
+        } catch (Throwable $e) {
+            // If collector fails, just pass through
             return $next($request);
         }
 
-        // Generate unique request ID and store it
+        // Generate unique request ID
         $this->requestId = Str::uuid()->toString();
-        $this->collector->setCurrentRequestId($this->requestId);
+
+        try {
+            $this->getCollector()->setCurrentRequestId($this->requestId);
+        } catch (Throwable $e) {
+            // Ignore errors
+        }
 
         $requestData = $this->captureRequest($request);
 
@@ -59,37 +73,52 @@ class CaptureRequestLog
 
     protected function captureRequest(Request $request): array
     {
-        return [
-            'method' => $request->method(),
-            'url' => $request->fullUrl(),
-            'path' => $request->path(),
-            'headers' => $this->collector->maskHeaders($this->normalizeHeaders($request->headers->all())),
-            'query' => $request->query(),
-            'body' => $this->getRequestBody($request),
-        ];
+        try {
+            return [
+                'method' => $request->method(),
+                'url' => $request->fullUrl(),
+                'path' => $request->path(),
+                'headers' => $this->getCollector()->maskHeaders($this->normalizeHeaders($request->headers->all())),
+                'query' => $request->query(),
+                'body' => $this->getRequestBody($request),
+            ];
+        } catch (Throwable $e) {
+            return [
+                'method' => $request->method(),
+                'url' => $request->fullUrl(),
+                'path' => $request->path(),
+                'headers' => [],
+                'query' => [],
+                'body' => null,
+            ];
+        }
     }
 
     protected function getRequestBody(Request $request): mixed
     {
-        $contentType = $request->header('Content-Type', '');
+        try {
+            $contentType = $request->header('Content-Type', '');
 
-        if (str_contains($contentType, 'application/json')) {
-            return $request->json()->all();
-        }
-
-        if (str_contains($contentType, 'multipart/form-data')) {
-            $data = $request->all();
-            foreach ($request->allFiles() as $key => $file) {
-                if (is_array($file)) {
-                    $data[$key] = array_map(fn($f) => "[File: {$f->getClientOriginalName()}]", $file);
-                } else {
-                    $data[$key] = "[File: {$file->getClientOriginalName()}]";
-                }
+            if (str_contains($contentType, 'application/json')) {
+                return $request->json()->all();
             }
-            return $data;
-        }
 
-        return $request->all();
+            if (str_contains($contentType, 'multipart/form-data')) {
+                $data = $request->all();
+                foreach ($request->allFiles() as $key => $file) {
+                    if (is_array($file)) {
+                        $data[$key] = array_map(fn($f) => "[File: {$f->getClientOriginalName()}]", $file);
+                    } else {
+                        $data[$key] = "[File: {$file->getClientOriginalName()}]";
+                    }
+                }
+                return $data;
+            }
+
+            return $request->all();
+        } catch (Throwable $e) {
+            return null;
+        }
     }
 
     protected function logRequest(
@@ -117,47 +146,55 @@ class CaptureRequestLog
             'has_error' => $exception !== null || ($response && $response->getStatusCode() >= 400),
         ];
 
-        $this->collector->logRequest($logData);
-        $this->collector->clearCurrentRequestId();
+        $this->getCollector()->logRequest($logData);
+        $this->getCollector()->clearCurrentRequestId();
     }
 
     protected function captureResponse(SymfonyResponse $response): array
     {
-        $headers = $this->normalizeHeaders($response->headers->all());
+        try {
+            $headers = $this->normalizeHeaders($response->headers->all());
 
-        // Skip body capture for streaming responses
-        if ($response instanceof \Symfony\Component\HttpFoundation\StreamedResponse) {
+            // Skip body capture for streaming responses
+            if ($response instanceof \Symfony\Component\HttpFoundation\StreamedResponse) {
+                return [
+                    'headers' => $this->getCollector()->maskHeaders($headers),
+                    'body' => '[Streamed Response]',
+                    'size' => 0,
+                ];
+            }
+
+            $content = $response->getContent();
+            if ($content === false) {
+                $content = '';
+            }
+
+            $body = $content;
+            $contentType = $response->headers->get('Content-Type', '');
+
+            if (str_contains($contentType, 'application/json')) {
+                $decoded = json_decode($content, true);
+                if (json_last_error() === JSON_ERROR_NONE) {
+                    $body = $decoded;
+                }
+            }
+
+            if (is_string($body) && strlen($body) > 10000) {
+                $body = substr($body, 0, 10000) . '... [truncated]';
+            }
+
             return [
-                'headers' => $this->collector->maskHeaders($headers),
-                'body' => '[Streamed Response]',
+                'headers' => $this->getCollector()->maskHeaders($headers),
+                'body' => $body,
+                'size' => strlen($content),
+            ];
+        } catch (Throwable $e) {
+            return [
+                'headers' => [],
+                'body' => '[Error capturing response]',
                 'size' => 0,
             ];
         }
-
-        $content = $response->getContent();
-        if ($content === false) {
-            $content = '';
-        }
-
-        $body = $content;
-        $contentType = $response->headers->get('Content-Type', '');
-
-        if (str_contains($contentType, 'application/json')) {
-            $decoded = json_decode($content, true);
-            if (json_last_error() === JSON_ERROR_NONE) {
-                $body = $decoded;
-            }
-        }
-
-        if (is_string($body) && strlen($body) > 10000) {
-            $body = substr($body, 0, 10000) . '... [truncated]';
-        }
-
-        return [
-            'headers' => $this->collector->maskHeaders($headers),
-            'body' => $body,
-            'size' => strlen($content),
-        ];
     }
 
     protected function normalizeHeaders(array $headers): array

@@ -17,7 +17,6 @@ class LogCollector
     public function __construct(array $config)
     {
         $this->config = $config;
-        $this->storagePath = $this->getStoragePath();
         $this->maskFields = $config['mask_fields'] ?? [
             'password',
             'password_confirmation',
@@ -34,7 +33,16 @@ class LogCollector
             'X-Auth-Token',
         ];
 
-        $this->ensureStorageExists();
+        // Defer storage initialization to first use to avoid issues during boot
+        $this->storagePath = '';
+    }
+
+    protected function initStorage(): void
+    {
+        if ($this->storagePath === '') {
+            $this->storagePath = $this->getStoragePath();
+            $this->ensureStorageExists();
+        }
     }
 
     protected function getStoragePath(): string
@@ -44,6 +52,7 @@ class LogCollector
 
     protected function getLogFileForType(string $type): string
     {
+        $this->initStorage();
         return $this->storagePath . '/' . $type . '.jsonl';
     }
 
@@ -150,7 +159,12 @@ class LogCollector
 
         $maxLogs = $this->getMaxLogsForType($type);
         $estimatedMaxSize = $maxLogs * 2048; // ~2KB per entry estimate
-        $currentSize = filesize($logFile);
+
+        // Use @ to suppress warnings if file is being written to
+        $currentSize = @filesize($logFile);
+        if ($currentSize === false) {
+            return;
+        }
 
         // Only trim when file is 20% over estimated max size
         if ($currentSize > $estimatedMaxSize * 1.2) {
