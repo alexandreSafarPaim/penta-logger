@@ -34,71 +34,48 @@ class CaptureRequestLog
             $headers[$key] = is_array($values) ? implode(', ', $values) : $values;
         }
 
+        // Capture request body
+        $requestBody = null;
+        try {
+            $contentType = $request->header('Content-Type', '');
+            if (str_contains($contentType, 'application/json')) {
+                $requestBody = $request->json()->all();
+            } elseif (str_contains($contentType, 'multipart/form-data')) {
+                $requestBody = $request->all();
+                foreach ($request->allFiles() as $key => $file) {
+                    if (is_array($file)) {
+                        $requestBody[$key] = array_map(fn($f) => "[File: {$f->getClientOriginalName()}]", $file);
+                    } else {
+                        $requestBody[$key] = "[File: {$file->getClientOriginalName()}]";
+                    }
+                }
+            } else {
+                $requestBody = $request->all();
+            }
+        } catch (Throwable $e) {
+            $requestBody = null;
+        }
+
         $requestData = [
             'method' => $request->method(),
             'url' => $request->fullUrl(),
             'path' => $request->path(),
             'headers' => $collector->maskHeaders($headers),
             'query' => $request->query(),
-            'body' => $this->getRequestBody($request),
+            'body' => $requestBody,
         ];
 
         try {
             $response = $next($request);
         } catch (Throwable $e) {
-            $this->logRequest($collector, $requestId, $request, null, $requestData, $startTime);
             $collector->clearCurrentRequestId();
             throw $e;
         }
 
+        // Capture response and log
         try {
-            $this->logRequest($collector, $requestId, $request, $response, $requestData, $startTime);
-        } catch (Throwable $e) {
-            // Ignore logging errors
-        }
+            $responseData = null;
 
-        $collector->clearCurrentRequestId();
-        return $response;
-    }
-
-    protected function getRequestBody(Request $request): mixed
-    {
-        try {
-            $contentType = $request->header('Content-Type', '');
-
-            if (str_contains($contentType, 'application/json')) {
-                return $request->json()->all();
-            }
-
-            if (str_contains($contentType, 'multipart/form-data')) {
-                $data = $request->all();
-                foreach ($request->allFiles() as $key => $file) {
-                    if (is_array($file)) {
-                        $data[$key] = array_map(fn($f) => "[File: {$f->getClientOriginalName()}]", $file);
-                    } else {
-                        $data[$key] = "[File: {$file->getClientOriginalName()}]";
-                    }
-                }
-                return $data;
-            }
-
-            return $request->all();
-        } catch (Throwable $e) {
-            return null;
-        }
-    }
-
-    protected function logRequest(
-        LogCollector $collector,
-        string $requestId,
-        Request $request,
-        ?SymfonyResponse $response,
-        array $requestData,
-        float $startTime
-    ): void {
-        $responseData = null;
-
-        if ($response) {
             // Check for StreamedResponse
             if ($response instanceof \Symfony\Component\HttpFoundation\StreamedResponse) {
                 $responseData = [
@@ -137,22 +114,27 @@ class CaptureRequestLog
                     'size' => strlen($content),
                 ];
             }
+
+            $duration = (microtime(true) - $startTime) * 1000;
+            $logData = [
+                'request_id' => $requestId,
+                'ip' => $request->ip(),
+                'method' => $requestData['method'],
+                'url' => $requestData['url'],
+                'path' => $requestData['path'],
+                'request' => $requestData,
+                'response' => $responseData,
+                'status' => $response->getStatusCode(),
+                'duration_ms' => round($duration, 2),
+                'has_error' => $response->getStatusCode() >= 400,
+            ];
+
+            $collector->logRequest($logData);
+        } catch (Throwable $e) {
+            // Ignore logging errors
         }
 
-        $duration = (microtime(true) - $startTime) * 1000;
-        $logData = [
-            'request_id' => $requestId,
-            'ip' => $request->ip(),
-            'method' => $requestData['method'],
-            'url' => $requestData['url'],
-            'path' => $requestData['path'],
-            'request' => $requestData,
-            'response' => $responseData,
-            'status' => $response ? $response->getStatusCode() : 500,
-            'duration_ms' => round($duration, 2),
-            'has_error' => !$response || $response->getStatusCode() >= 400,
-        ];
-
-        $collector->logRequest($logData);
+        $collector->clearCurrentRequestId();
+        return $response;
     }
 }
