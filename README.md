@@ -26,7 +26,7 @@ Dashboard de streaming de logs em tempo real para aplicações Laravel. Monitore
 - PHP 8.1+
 - Laravel 10, 11 ou 12
 
-> **Laravel 9?** Use a versão legacy: `composer require alexandresafarpaim/penta-logger:^0.1`
+> **Laravel 8 ou 9?** Use a versão legacy: `composer require alexandresafarpaim/penta-logger:^0.2`
 
 ## Instalação
 
@@ -41,7 +41,7 @@ composer require alexandresafarpaim/penta-logger
 | Versão | Laravel | PHP |
 |--------|---------|-----|
 | `^1.0` | 10, 11, 12 | ^8.1 |
-| `^0.1` (legacy) | 9 | ^8.0.2 |
+| `^0.2` (legacy) | 8.65+, 9 | ^8.0 |
 
 Pronto! Acesse `http://sua-app.test/_penta-logger` para ver o dashboard.
 
