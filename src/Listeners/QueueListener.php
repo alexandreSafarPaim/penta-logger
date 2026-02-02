@@ -75,15 +75,32 @@ class QueueListener
         ];
 
         if ($exception) {
-            $data['exception'] = [
-                'class' => get_class($exception),
-                'message' => $exception->getMessage(),
-                'file' => $exception->getFile(),
-                'line' => $exception->getLine(),
-            ];
+            $data['exception'] = $this->getExceptionChain($exception);
         }
 
         $this->collector->logJob($data);
+    }
+
+    protected function getExceptionChain(\Throwable $exception): array
+    {
+        $data = [
+            'class' => get_class($exception),
+            'message' => $exception->getMessage(),
+            'file' => $exception->getFile(),
+            'line' => $exception->getLine(),
+        ];
+
+        // Check for previous exception (the real cause)
+        if ($previous = $exception->getPrevious()) {
+            $data['previous'] = [
+                'class' => get_class($previous),
+                'message' => $previous->getMessage(),
+                'file' => $previous->getFile(),
+                'line' => $previous->getLine(),
+            ];
+        }
+
+        return $data;
     }
 
     protected function extractJobProperties(object $job): array

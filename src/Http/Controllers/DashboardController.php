@@ -668,6 +668,10 @@ class DashboardController extends Controller
             color: var(--accent-blue);
         }
 
+        .filter-toggle.active.has-filters {
+            color: white;
+        }
+
         .filter-panel {
             position: absolute;
             top: calc(100% + 8px);
@@ -1392,6 +1396,11 @@ class DashboardController extends Controller
                             <div class="detail-title">Exception</div>
                             <pre class="error-text">${escapeHtmlText(d.exception.class)}: ${escapeHtmlText(d.exception.message)}
 at ${escapeHtmlText(d.exception.file)}:${d.exception.line}</pre>
+                            ${d.exception.previous ? `
+                            <div class="detail-title" style="margin-top: 12px;">Caused by</div>
+                            <pre class="error-text">${escapeHtmlText(d.exception.previous.class)}: ${escapeHtmlText(d.exception.previous.message)}
+at ${escapeHtmlText(d.exception.previous.file)}:${d.exception.previous.line}</pre>
+                            ` : ''}
                         </div>
                         ` : ''}
                     </div>
@@ -1436,8 +1445,20 @@ at ${escapeHtmlText(d.exception.file)}:${d.exception.line}</pre>
                         ${hasException ? `
                         <div class="detail-section">
                             <div class="detail-title">Exception</div>
+                            ${d.exception.real_exception ? `
+                            <pre class="error-text">${escapeHtmlText(d.exception.real_exception.class)}: ${escapeHtmlText(d.exception.real_exception.message)}
+at ${escapeHtmlText(d.exception.real_exception.file || 'unknown')}:${d.exception.real_exception.line || '?'}</pre>
+                            <div class="detail-title" style="margin-top: 12px; color: var(--text-muted);">Process Exit Info</div>
+                            <pre style="color: var(--text-muted);">${escapeHtmlText(d.exception.class)}: ${escapeHtmlText(d.exception.message)}</pre>
+                            ` : `
                             <pre class="error-text">${escapeHtmlText(d.exception.class)}: ${escapeHtmlText(d.exception.message)}
 at ${escapeHtmlText(d.exception.file)}:${d.exception.line}</pre>
+                            ${d.exception.previous ? `
+                            <div class="detail-title" style="margin-top: 12px;">Caused by</div>
+                            <pre class="error-text">${escapeHtmlText(d.exception.previous.class)}: ${escapeHtmlText(d.exception.previous.message)}
+at ${escapeHtmlText(d.exception.previous.file)}:${d.exception.previous.line}</pre>
+                            ` : ''}
+                            `}
                         </div>
                         ` : ''}
                     </div>

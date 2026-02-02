@@ -76,15 +76,55 @@ class ScheduleListener
         }
 
         if ($exception) {
-            $data['exception'] = [
-                'class' => get_class($exception),
-                'message' => $exception->getMessage(),
-                'file' => $exception->getFile(),
-                'line' => $exception->getLine(),
-            ];
+            $exceptionData = $this->getExceptionChain($exception);
+
+            // Try to extract real exception from output (for subprocess commands)
+            if (isset($data['output']) && !empty($data['output'])) {
+                $parsedException = $this->parseExceptionFromOutput($data['output']);
+                if ($parsedException) {
+                    $exceptionData['real_exception'] = $parsedException;
+                }
+            }
+
+            $data['exception'] = $exceptionData;
         }
 
         $this->collector->logSchedule($data);
+    }
+
+    protected function parseExceptionFromOutput(string $output): ?array
+    {
+        // Remove ANSI escape codes
+        $output = preg_replace('/\x1b\[[0-9;]*m/', '', $output);
+
+        // Try to extract exception info from artisan command output
+        // Laravel format: "   ExceptionClass \n\n  Message\n\n  at file:line"
+        if (preg_match('/^\s*([A-Za-z\\\\]*(Exception|Error))\s*$/m', $output, $classMatch)) {
+            $class = trim($classMatch[1]);
+
+            // Extract message - look for lines between exception class and "at file:line"
+            $pattern = '/' . preg_quote($class, '/') . '\s*\n+\s*(.+?)\n+\s*at\s+/s';
+            if (preg_match($pattern, $output, $msgMatch)) {
+                $message = trim($msgMatch[1]);
+
+                // Extract file and line
+                $file = null;
+                $line = null;
+                if (preg_match('/\bat\s+([^\s:]+):(\d+)/m', $output, $locMatch)) {
+                    $file = $locMatch[1];
+                    $line = (int) $locMatch[2];
+                }
+
+                return [
+                    'class' => $class,
+                    'message' => $message,
+                    'file' => $file,
+                    'line' => $line,
+                ];
+            }
+        }
+
+        return null;
     }
 
     protected function getTaskCommand(ScheduledEvent $task): string
@@ -105,6 +145,28 @@ class ScheduleListener
         }
 
         return 'Unknown';
+    }
+
+    protected function getExceptionChain(\Throwable $exception): array
+    {
+        $data = [
+            'class' => get_class($exception),
+            'message' => $exception->getMessage(),
+            'file' => $exception->getFile(),
+            'line' => $exception->getLine(),
+        ];
+
+        // Check for previous exception (the real cause)
+        if ($previous = $exception->getPrevious()) {
+            $data['previous'] = [
+                'class' => get_class($previous),
+                'message' => $previous->getMessage(),
+                'file' => $previous->getFile(),
+                'line' => $previous->getLine(),
+            ];
+        }
+
+        return $data;
     }
 
     protected function getTaskId(ScheduledEvent $task): string
