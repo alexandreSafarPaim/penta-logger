@@ -1059,8 +1059,17 @@ class DashboardController extends Controller
             const type = log.type;
             if (!logs[type]) logs[type] = [];
 
+            // Check for duplicate by ID
+            if (logs[type].some(l => l.id === log.id)) {
+                return;
+            }
+
             logs[type].unshift(log);
-            lastTimestamp = log.timestamp;
+
+            // Only update lastTimestamp if this log is newer
+            if (!lastTimestamp || log.timestamp > lastTimestamp) {
+                lastTimestamp = log.timestamp;
+            }
 
             if (logs[type].length > 200) {
                 logs[type] = logs[type].slice(0, 200);
@@ -1121,11 +1130,11 @@ class DashboardController extends Controller
             // Get filter values
             const filterMethod = document.getElementById('filterMethod')?.value || '';
             const filterStatus = document.getElementById('filterStatus')?.value || '';
-            const filterEndpoint = document.getElementById('filterEndpoint')?.value.toLowerCase() || '';
-            const filterIp = document.getElementById('filterIp')?.value.toLowerCase() || '';
-            const filterBody = document.getElementById('filterBody')?.value.toLowerCase() || '';
-            const filterJobName = document.getElementById('filterJobName')?.value.toLowerCase() || '';
-            const filterScheduleCommand = document.getElementById('filterScheduleCommand')?.value.toLowerCase() || '';
+            const filterEndpoint = (document.getElementById('filterEndpoint')?.value || '').toLowerCase();
+            const filterIp = (document.getElementById('filterIp')?.value || '').toLowerCase();
+            const filterBody = (document.getElementById('filterBody')?.value || '').toLowerCase();
+            const filterJobName = (document.getElementById('filterJobName')?.value || '').toLowerCase();
+            const filterScheduleCommand = (document.getElementById('filterScheduleCommand')?.value || '').toLowerCase();
             const dateFrom = document.getElementById('dateFrom')?.value || '';
             const dateTo = document.getElementById('dateTo')?.value || '';
 
@@ -1693,10 +1702,17 @@ at ${escapeHtmlText(d.exception.previous.file)}:${d.exception.previous.line}</pr
                         }
                     });
                     updateCounts();
-                    renderLogs();
+                    try {
+                        renderLogs();
+                    } catch (e) {
+                        console.error('Error rendering logs:', e);
+                    }
                     startPolling();
                 })
-                .catch(() => startPolling());
+                .catch((e) => {
+                    console.error('Error loading initial logs:', e);
+                    startPolling();
+                });
         }
 
         // Setup logout form
