@@ -6,8 +6,10 @@ use Illuminate\Support\Str;
 
 class LogCollector
 {
+    protected const LOG_TYPES = ['request', 'error', 'external_api', 'job', 'schedule'];
+
     protected array $config;
-    protected string $logFile;
+    protected string $storagePath;
     protected array $maskFields;
     protected array $maskHeaders;
     protected ?string $currentRequestId = null;
@@ -15,7 +17,7 @@ class LogCollector
     public function __construct(array $config)
     {
         $this->config = $config;
-        $this->logFile = $this->getLogFilePath();
+        $this->storagePath = $this->getStoragePath();
         $this->maskFields = $config['mask_fields'] ?? [
             'password',
             'password_confirmation',
@@ -32,29 +34,33 @@ class LogCollector
             'X-Auth-Token',
         ];
 
-        $this->ensureLogFileExists();
+        $this->ensureStorageExists();
     }
 
-    protected function getLogFilePath(): string
+    protected function getStoragePath(): string
     {
-        $storagePath = storage_path('penta-logger');
-
-        if (!is_dir($storagePath)) {
-            mkdir($storagePath, 0755, true);
-        }
-
-        return $storagePath . '/logs.jsonl';
+        return storage_path('penta-logger');
     }
 
-    protected function ensureLogFileExists(): void
+    protected function getLogFileForType(string $type): string
     {
-        if (!file_exists($this->logFile)) {
-            touch($this->logFile);
+        return $this->storagePath . '/' . $type . '.jsonl';
+    }
+
+    protected function ensureStorageExists(): void
+    {
+        if (!is_dir($this->storagePath)) {
+            mkdir($this->storagePath, 0755, true);
         }
     }
 
     public function log(string $type, array $data): void
     {
+        // Check if this log type is disabled (limit = 0)
+        if ($this->getMaxLogsForType($type) === 0) {
+            return;
+        }
+
         $entry = [
             'id' => Str::uuid()->toString(),
             'type' => $type,
@@ -62,7 +68,19 @@ class LogCollector
             'data' => $this->maskSensitiveData($data),
         ];
 
-        $this->writeLog($entry);
+        $this->writeLog($type, $entry);
+    }
+
+    protected function getMaxLogsForType(string $type): int
+    {
+        $maxLogs = $this->config['max_logs'] ?? [];
+
+        // Support legacy single value config
+        if (!is_array($maxLogs)) {
+            return (int) $maxLogs;
+        }
+
+        return (int) ($maxLogs[$type] ?? 500);
     }
 
     public function logRequest(array $data): void
@@ -105,11 +123,12 @@ class LogCollector
         $this->log('schedule', $data);
     }
 
-    protected function writeLog(array $entry): void
+    protected function writeLog(string $type, array $entry): void
     {
+        $logFile = $this->getLogFileForType($type);
         $line = json_encode($entry, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . "\n";
 
-        $handle = fopen($this->logFile, 'a');
+        $handle = fopen($logFile, 'a');
         if ($handle) {
             flock($handle, LOCK_EX);
             fwrite($handle, $line);
@@ -117,49 +136,58 @@ class LogCollector
             fclose($handle);
         }
 
-        $this->trimLogs();
+        $this->trimLogsForType($type);
     }
 
-    protected function trimLogs(): void
+    protected function trimLogsForType(string $type): void
     {
-        $maxLogs = $this->config['max_logs'] ?? 500;
+        $logFile = $this->getLogFileForType($type);
 
-        $lines = file($this->logFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+        if (!file_exists($logFile)) {
+            return;
+        }
+
+        $maxLogs = $this->getMaxLogsForType($type);
+        $lines = file($logFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
 
         if (count($lines) > $maxLogs) {
             $lines = array_slice($lines, -$maxLogs);
-            file_put_contents($this->logFile, implode("\n", $lines) . "\n", LOCK_EX);
+            file_put_contents($logFile, implode("\n", $lines) . "\n", LOCK_EX);
         }
     }
 
     public function getLogs(?string $type = null, ?string $since = null): array
     {
-        if (!file_exists($this->logFile)) {
-            return [];
-        }
-
-        $lines = file($this->logFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
         $logs = [];
+        $typesToRead = $type ? [$type] : self::LOG_TYPES;
 
-        foreach ($lines as $line) {
-            $entry = json_decode($line, true);
-            if (!$entry) {
+        foreach ($typesToRead as $logType) {
+            $logFile = $this->getLogFileForType($logType);
+
+            if (!file_exists($logFile)) {
                 continue;
             }
 
-            if ($type && $entry['type'] !== $type) {
-                continue;
-            }
+            $lines = file($logFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
 
-            if ($since && $entry['timestamp'] <= $since) {
-                continue;
-            }
+            foreach ($lines as $line) {
+                $entry = json_decode($line, true);
+                if (!$entry) {
+                    continue;
+                }
 
-            $logs[] = $entry;
+                if ($since && $entry['timestamp'] <= $since) {
+                    continue;
+                }
+
+                $logs[] = $entry;
+            }
         }
 
-        // Return newest first
-        return array_reverse($logs);
+        // Sort by timestamp descending (newest first)
+        usort($logs, fn($a, $b) => $b['timestamp'] <=> $a['timestamp']);
+
+        return $logs;
     }
 
     public function getLogsSince(string $timestamp): array
@@ -167,9 +195,16 @@ class LogCollector
         return $this->getLogs(null, $timestamp);
     }
 
-    public function clear(): void
+    public function clear(?string $type = null): void
     {
-        file_put_contents($this->logFile, '', LOCK_EX);
+        $typesToClear = $type ? [$type] : self::LOG_TYPES;
+
+        foreach ($typesToClear as $logType) {
+            $logFile = $this->getLogFileForType($logType);
+            if (file_exists($logFile)) {
+                file_put_contents($logFile, '', LOCK_EX);
+            }
+        }
     }
 
     protected function maskSensitiveData(array $data): array

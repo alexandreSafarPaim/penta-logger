@@ -173,12 +173,36 @@ class DashboardController extends Controller
             padding: 16px 20px;
             max-width: 1400px;
             margin: 0 auto;
+            height: calc(100vh - 140px);
+            display: flex;
+            flex-direction: column;
         }
 
         .log-list {
             display: flex;
             flex-direction: column;
             gap: 8px;
+            flex: 1;
+            overflow-y: auto;
+            padding-right: 8px;
+        }
+
+        .log-list::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .log-list::-webkit-scrollbar-track {
+            background: var(--bg-secondary);
+            border-radius: 4px;
+        }
+
+        .log-list::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 4px;
+        }
+
+        .log-list::-webkit-scrollbar-thumb:hover {
+            background: var(--text-muted);
         }
 
         .log-entry {
@@ -186,6 +210,7 @@ class DashboardController extends Controller
             border: 1px solid var(--border-color);
             border-radius: 8px;
             overflow: hidden;
+            flex-shrink: 0;
         }
 
         .log-header {
@@ -595,9 +620,10 @@ class DashboardController extends Controller
         .filter-bar {
             display: flex;
             gap: 12px;
-            margin-bottom: 16px;
+            padding-bottom: 16px;
             align-items: center;
             flex-wrap: wrap;
+            flex-shrink: 0;
         }
 
         .filter-group {
@@ -667,6 +693,37 @@ class DashboardController extends Controller
         .btn-filter.active {
             background: var(--accent-blue);
             border-color: var(--accent-blue);
+        }
+
+        .date-separator {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px 0;
+            margin: 8px 0;
+            background: var(--bg-primary);
+            flex-shrink: 0;
+        }
+
+        .date-separator::before,
+        .date-separator::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: linear-gradient(to right, transparent, var(--border-color) 10%, var(--border-color) 90%, transparent);
+        }
+
+        .date-separator-text {
+            padding: 4px 16px;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
         }
 
     </style>
@@ -990,10 +1047,58 @@ class DashboardController extends Controller
                 return;
             }
 
-            list.innerHTML = filtered.map(log => renderLogEntry(log)).join('');
+            // Group logs by date and render with separators
+            let html = '';
+            let currentDate = null;
+
+            filtered.forEach(log => {
+                const logDate = getDateKey(log.timestamp);
+
+                if (logDate !== currentDate) {
+                    currentDate = logDate;
+                    html += renderDateSeparator(log.timestamp);
+                }
+
+                html += renderLogEntry(log);
+            });
+
+            list.innerHTML = html;
+        }
+
+        function getDateKey(timestamp) {
+            const date = new Date(timestamp);
+            return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+        }
+
+        function renderDateSeparator(timestamp) {
+            const date = new Date(timestamp);
+            const today = new Date();
+            const yesterday = new Date(today);
+            yesterday.setDate(yesterday.getDate() - 1);
+
+            let label;
+
+            if (getDateKey(timestamp) === getDateKey(today.toISOString())) {
+                label = 'Hoje';
+            } else if (getDateKey(timestamp) === getDateKey(yesterday.toISOString())) {
+                label = 'Ontem';
+            } else {
+                label = date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+            }
+
+            return `
+                <div class="date-separator">
+                    <span class="date-separator-text">${label}</span>
+                </div>
+            `;
         }
 
         function renderLogEntry(log) {
+            // Skip invalid logs
+            if (!log || !log.data || !log.timestamp) {
+                return '';
+            }
+
             if (log.type === 'error') {
                 return renderErrorEntry(log);
             }
@@ -1046,15 +1151,18 @@ class DashboardController extends Controller
         }
 
         function renderErrorEntry(log) {
-            const d = log.data;
+            const d = log.data || {};
             const time = new Date(log.timestamp).toLocaleTimeString();
+            const message = d.message || 'Unknown error';
+            const file = d.file || 'unknown';
+            const line = d.line || '?';
 
             return `
                 <div class="log-entry error-entry" data-id="${log.id}">
                     <div class="log-header" onclick="toggleEntry('${log.id}')">
                         <span class="log-time">${time}</span>
-                        <span class="error-message">${escapeHtmlText(d.message)}</span>
-                        <span class="error-file">${d.file}:${d.line}</span>
+                        <span class="error-message">${escapeHtmlText(message)}</span>
+                        <span class="error-file">${escapeHtmlText(file)}:${line}</span>
                     </div>
                     <div class="log-details">
                         <div class="detail-section">

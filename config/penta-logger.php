@@ -51,14 +51,21 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Maximum Logs
+    | Maximum Logs Per Type
     |--------------------------------------------------------------------------
     |
-    | The maximum number of logs to keep in storage. Older logs will be
-    | automatically removed when this limit is exceeded.
+    | The maximum number of logs to keep in storage for each log type.
+    | Older logs will be automatically removed when the limit is exceeded.
+    | Set to 0 to disable a specific log type.
     |
     */
-    'max_logs' => env('PENTA_LOGGER_MAX_LOGS', 500),
+    'max_logs' => [
+        'request' => env('PENTA_LOGGER_MAX_REQUESTS', 500),
+        'error' => env('PENTA_LOGGER_MAX_ERRORS', 500),
+        'external_api' => env('PENTA_LOGGER_MAX_EXTERNAL_API', 500),
+        'job' => env('PENTA_LOGGER_MAX_JOBS', 500),
+        'schedule' => env('PENTA_LOGGER_MAX_SCHEDULES', 500),
+    ],
 
     /*
     |--------------------------------------------------------------------------
@@ -102,6 +109,7 @@ return [
         'livewire/*',
         'sanctum/*',
         '_ignition/*',
+        '.well-known/*',
     ],
 
     /*

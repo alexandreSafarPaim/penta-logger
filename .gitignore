@@ -20,5 +20,6 @@ Thumbs.db
 .env
 *.log
 /projeto_teste/
+/projeto_teste_packagist/
 CLAUDE.md
 PLANNING.md
