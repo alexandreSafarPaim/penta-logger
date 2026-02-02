@@ -1,6 +1,6 @@
 {
     "name": "alexandresafarpaim/penta-logger",
-    "version": "1.0.3",
+    "version": "0.1.0",
     "description": "Real-time log streaming dashboard for Laravel. Monitor requests, errors, external APIs, jobs, and scheduled tasks with zero configuration.",
     "keywords": ["laravel", "logging", "debugging", "developer-tools", "real-time", "dashboard", "jobs", "queue", "scheduler"],
     "type": "library",
@@ -13,11 +13,11 @@
         }
     ],
     "require": {
-        "php": "^8.1",
-        "illuminate/support": "^10.0|^11.0|^12.0"
+        "php": "^8.0.2",
+        "illuminate/support": "^9.0"
     },
     "require-dev": {
-        "orchestra/testbench": "^8.0|^9.0|^10.0",
+        "orchestra/testbench": "^7.0",
         "phpunit/phpunit": "^10.0|^11.0"
     },
     "autoload": {
