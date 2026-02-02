@@ -11,6 +11,7 @@ class ExceptionHandlerDecorator implements ExceptionHandler
 {
     protected ExceptionHandler $handler;
     protected LogCollector $collector;
+    protected static bool $isLogging = false;
 
     public function __construct(ExceptionHandler $handler, LogCollector $collector)
     {
@@ -20,7 +21,18 @@ class ExceptionHandlerDecorator implements ExceptionHandler
 
     public function report(Throwable $e): void
     {
-        $this->logException($e);
+        // Prevent infinite loop if logging itself throws an exception
+        if (!self::$isLogging) {
+            self::$isLogging = true;
+            try {
+                $this->logException($e);
+            } catch (Throwable $loggingException) {
+                // Silently ignore logging errors to prevent loops
+            } finally {
+                self::$isLogging = false;
+            }
+        }
+
         $this->handler->report($e);
     }
 

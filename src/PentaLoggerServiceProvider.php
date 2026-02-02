@@ -133,6 +133,11 @@ class PentaLoggerServiceProvider extends ServiceProvider
 
     protected function registerScheduleListeners(): void
     {
+        // Schedule events were added in Laravel 8.65
+        if (!class_exists(ScheduledTaskStarting::class)) {
+            return;
+        }
+
         $listener = new ScheduleListener($this->app->make(LogCollector::class));
 
         Event::listen(ScheduledTaskStarting::class, [$listener, 'handleScheduledTaskStarting']);
